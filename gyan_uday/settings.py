@@ -19,11 +19,11 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config (
     'ALLOWED_HOSTS',
     default='localhost,127.0.0.1,0.0.0.0',
-    # default='localhost,127.0.0.1,0.0.0.0,student-dashboard-2uy0.onrender.com',
+    # default='localhost,127.0.0.1,0.0.0.0,dashboard-5eoj.onrender.com',
 
     cast=lambda v: [s.strip() for s in v.split(',')]
 )
-
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost').split(',')
 
 # ─────────────────────────────────────────────
 # INSTALLED APPS
