@@ -216,4 +216,77 @@ def activity_log(request):
 # Alias for marks list (used in base.html nav)
 @login_required
 def marks_list(request):
-    return redirect('results:list')
+    """
+    Shows all students who have at least one mark recorded,
+    with their overall average score and best grade.
+    Uses values() + annotate() to compute stats in a single query.
+    """
+    from django.db.models import Avg, Count, Max, Min, FloatField, Case, When
+    from students.models import Department
+
+    search            = request.GET.get('search', '').strip()
+    department_filter = request.GET.get('department', '')
+
+    # Get all students who have marks, with aggregated stats
+    from students.models import Student
+
+    students_qs = Student.objects.select_related('department').filter(
+        marks__isnull=False
+    ).distinct()
+
+    if search:
+        from django.db.models import Q
+        students_qs = students_qs.filter(
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search)  |
+            Q(roll_number__icontains=search)
+        )
+    if department_filter:
+        students_qs = students_qs.filter(department_id=department_filter)
+
+    # Build per-student stats
+    rows = []
+    for student in students_qs.order_by('roll_number'):
+        student_marks = Mark.objects.filter(student=student, is_absent=False)
+        agg = student_marks.aggregate(
+            avg_score  = Avg('marks_obtained'),
+            exam_count = Count('id'),
+        )
+        # Best grade — order by grade priority
+        grade_order = ['O', 'A+', 'A', 'B+', 'B', 'C', 'P', 'F', 'AB']
+        grades_obtained = list(
+            student_marks.values_list('grade', flat=True).distinct()
+        )
+        best_grade = None
+        for g in grade_order:
+            if g in grades_obtained:
+                best_grade = g
+                break
+
+        avg_score = agg['avg_score']
+        # Get total_marks from the most recent exam to compute percentage
+        avg_pct = None
+        if avg_score:
+            last_mark = student_marks.select_related('exam').order_by('-exam__exam_date').first()
+            if last_mark and last_mark.exam.total_marks:
+                avg_pct = round((float(avg_score) / float(last_mark.exam.total_marks)) * 100, 1)
+                avg_pct = min(avg_pct, 100)
+
+        rows.append({
+            'student':    student,
+            'exam_count': agg['exam_count'] or 0,
+            'avg_score':  round(float(avg_score), 1) if avg_score else None,
+            'avg_pct':    avg_pct,
+            'best_grade': best_grade,
+        })
+
+    departments = Department.objects.all()
+
+    return render(request, 'results/results_list.html', {
+        'page_title':        'Student Results',
+        'students':          rows,
+        'total':             len(rows),
+        'search':            search,
+        'department_filter': department_filter,
+        'departments':       departments,
+    })

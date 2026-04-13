@@ -67,7 +67,7 @@
         </thead>
         <tbody>
           {% for enr in students_to_mark %}
-          {% with s=enr.student existing_status=existing_map|default:{} %}
+          {% with s=enr.student %}
           <input type="hidden" name="student_ids" value="{{ s.pk }}" />
           <tr>
             <td style="font-family:'DM Mono',monospace;font-size:12px;">{{ s.roll_number }}</td>
@@ -83,9 +83,7 @@
                 type="radio"
                 name="status_{{ s.pk }}"
                 value="{{ status_val }}"
-                {% if existing_map and s.pk in existing_map %}
-                  {% if existing_map|default:'' == status_val %}checked{% endif %}
-                {% elif status_val == 'present' %}checked{% endif %}
+                {% if status_val == 'present' %}checked{% endif %}
                 style="cursor:pointer;width:16px;height:16px;"
               />
             </td>

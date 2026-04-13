@@ -226,4 +226,3 @@ class ActivityLog(models.Model):
         ordering = ['-created_at']
         verbose_name = 'Activity Log'
         verbose_name_plural = 'Activity Logs'
-
